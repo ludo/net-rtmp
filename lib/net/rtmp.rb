@@ -86,15 +86,19 @@ module Net
         tcp_socket.setsockopt(Socket::SOL_SOCKET, Socket::SO_RCVTIMEO, socket_timeout)
         tcp_socket.setsockopt(Socket::SOL_SOCKET, Socket::SO_SNDTIMEO, socket_timeout)
 
-        context = OpenSSL::SSL::SSLContext.new
-        context.set_params(ssl_version: :TLSv1, verify_mode: OpenSSL::SSL::VERIFY_PEER)
+        if uri.scheme == "rtmps"
+          context = OpenSSL::SSL::SSLContext.new
+          context.set_params(ssl_version: :TLSv1, verify_mode: OpenSSL::SSL::VERIFY_PEER)
 
-        OpenSSL::SSL::SSLSocket.new(tcp_socket, context).tap { |socket| socket.sync_close = true }
+          OpenSSL::SSL::SSLSocket.new(tcp_socket, context).tap { |socket| socket.sync_close = true }
+        else
+          tcp_socket
+        end
       end
     end
 
     def connect
-      socket.connect
+      socket.connect if socket.is_a? OpenSSL::SSL::SSLSocket
 
       raise ServerError, 'Cannot connect to server.' if socket.closed?
 
